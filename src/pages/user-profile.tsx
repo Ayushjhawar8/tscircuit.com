@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { GitHubLogoIcon, StarIcon, LockClosedIcon } from "@radix-ui/react-icons"
 import { Input } from "@/components/ui/input"
 import { useGlobalStore } from "@/hooks/use-global-store"
-import { MoreVertical, Trash2 } from "lucide-react"
+import { MoreVertical, Trash2, Globe } from "lucide-react"
 import { useConfirmDeleteSnippetDialog } from "@/components/dialogs/confirm-delete-snippet-dialog"
 import {
   DropdownMenu,
@@ -19,10 +19,37 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { OptimizedImage } from "@/components/OptimizedImage"
+import { useSnippetsBaseApiUrl } from "@/hooks/use-snippets-base-api-url"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { TypeBadge } from "@/components/TypeBadge"
 
 export const UserProfilePage = () => {
   const { username } = useParams()
   const axios = useAxios()
+  const apiBaseUrl = useSnippetsBaseApiUrl()
+
+  const getRelativeTimeString = (date: string) => {
+    const now = new Date()
+    const past = new Date(date)
+    const diffInMonths =
+      (now.getFullYear() - past.getFullYear()) * 12 +
+      now.getMonth() -
+      past.getMonth()
+    const diffInDays = Math.floor(
+      (now.getTime() - past.getTime()) / (1000 * 60 * 60 * 24),
+    )
+
+    if (diffInDays < 1) return "today"
+    if (diffInDays === 1) return "yesterday"
+    if (diffInDays < 30) return `${diffInDays} days ago`
+    if (diffInMonths < 12)
+      return `${diffInMonths} month${diffInMonths > 1 ? "s" : ""} ago`
+    const years = Math.floor(diffInMonths / 12)
+    return `${years} year${years > 1 ? "s" : ""} ago`
+  }
+
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("all")
   const session = useGlobalStore((s) => s.session)
@@ -59,9 +86,20 @@ export const UserProfilePage = () => {
     <div>
       <Header />
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">
-          {isCurrentUserProfile ? "My Profile" : `${username}'s Profile`}
-        </h1>
+        <div className="flex items-center gap-4 mb-6">
+          <Avatar className="h-16 w-16">
+            <AvatarImage src={`https://github.com/${username}.png`} />
+            <AvatarFallback>{username?.charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div>
+            <h1 className="text-3xl font-bold">
+              {isCurrentUserProfile ? "My Profile" : `${username}'s Profile`}
+            </h1>
+            <p className="text-gray-600">
+              Snippets: {userSnippets?.length || 0}
+            </p>
+          </div>
+        </div>
         <div className="mb-6">
           <a
             href={`https://github.com/${username}`}
@@ -99,19 +137,31 @@ export const UserProfilePage = () => {
                   key={snippet.snippet_id}
                   href={`/${snippet.owner_name}/${snippet.unscoped_name}`}
                 >
-                  <div className="border p-4 rounded-md hover:shadow-md transition-shadow">
-                    <div className="flex justify-between items-start">
-                      <h3 className="text-md font-semibold">
-                        {snippet.unscoped_name}
-                      </h3>
-                      <div className="flex items-center gap-2">
+                  <div className="border p-4 rounded-md hover:shadow-md transition-shadow h-full flex flex-col">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0">
+                        <h3 className="text-md font-semibold truncate flex items-center gap-2">
+                          {snippet.unscoped_name}
+                          <TypeBadge type={snippet.snippet_type} />
+                          <span className="text-xs text-gray-500 font-normal">
+                            {getRelativeTimeString(snippet.updated_at)}
+                          </span>
+                        </h3>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
                         <div className="flex items-center text-gray-600">
                           <StarIcon className="w-4 h-4 mr-1" />
-                          <span>{snippet.star_count || 0}</span>
+                          <span className="min-w-[1rem] text-sm">
+                            {snippet.star_count || 0}
+                          </span>
                         </div>
-                        {snippet.is_private && (
+                        {snippet.is_private ? (
                           <div className="flex items-center text-gray-600">
-                            <LockClosedIcon className="w-4 h-4 mr-1" />
+                            <LockClosedIcon className="w-4 h-4" />
+                          </div>
+                        ) : (
+                          <div className="flex items-center text-gray-600">
+                            <Globe className="w-4 h-4" />
                           </div>
                         )}
                         {isCurrentUserProfile && (
@@ -125,7 +175,7 @@ export const UserProfilePage = () => {
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent>
+                            <DropdownMenuContent align="end">
                               <DropdownMenuItem
                                 className="text-xs text-red-600"
                                 onClick={(e) => handleDeleteClick(e, snippet)}
@@ -138,10 +188,13 @@ export const UserProfilePage = () => {
                         )}
                       </div>
                     </div>
-                    <p className="text-sm text-gray-500">
-                      Last Updated:{" "}
-                      {new Date(snippet.updated_at).toLocaleString()}
-                    </p>
+                    <div className="mt-3 h-48 w-full bg-gray-100 rounded overflow-hidden flex items-center justify-center">
+                      <OptimizedImage
+                        src={`${apiBaseUrl}/snippets/images/${snippet.owner_name}/${snippet.unscoped_name}/pcb.svg`}
+                        alt={`PCB preview for ${snippet.unscoped_name}`}
+                        className="w-full h-full object-contain p-2 hover:scale-105 transition-transform"
+                      />
+                    </div>
                   </div>
                 </Link>
               ))}
