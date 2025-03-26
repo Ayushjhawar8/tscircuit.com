@@ -23,6 +23,7 @@ import { OptimizedImage } from "@/components/OptimizedImage"
 import { useSnippetsBaseApiUrl } from "@/hooks/use-snippets-base-api-url"
 import { SnippetTypeIcon } from "@/components/SnippetTypeIcon"
 import { format } from "timeago.js"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 export const UserProfilePage = () => {
   const { username } = useParams()
@@ -80,9 +81,20 @@ export const UserProfilePage = () => {
     <div>
       <Header />
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">
-          {isCurrentUserProfile ? "My Profile" : `${username}'s Profile`}
-        </h1>
+        <div className="flex items-center gap-4 mb-6">
+          <Avatar className="h-16 w-16">
+            <AvatarImage src={`https://github.com/${username}.png`} />
+            <AvatarFallback>{username?.[0]?.toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div>
+            <h1 className="text-3xl font-bold">
+              {isCurrentUserProfile ? "My Profile" : `${username}'s Profile`}
+            </h1>
+            <div className="text-gray-600 mt-1">
+              {filteredSnippets?.length || 0} snippets
+            </div>
+          </div>
+        </div>
         <div className="mb-6">
           <a
             href={`https://github.com/${username}`}
